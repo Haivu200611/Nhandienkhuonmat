@@ -1,0 +1,8 @@
+Pillow
+numpy
+imutils
+opencv-python
+h5py
+tensorflow
+keras
+python-vlc

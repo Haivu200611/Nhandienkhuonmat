@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+outputs/
+output.jpg
+
+.idea/
+.vscode/
