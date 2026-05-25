@@ -4,36 +4,7 @@ import imutils
 import cv2
 from keras.models import load_model
 import numpy as np
-# import vlc  # Commented out: VLC library not needed
 from recommender import EmotionRecommender
-
-happy = cv2.imread("emojis/happy.jpg")
-if happy is not None:
-    happy = cv2.resize(happy, (100, 100), interpolation=cv2.INTER_AREA)
-
-sad = cv2.imread("emojis/sad.jpg")
-if sad is not None:
-    sad = cv2.resize(sad, (100, 100), interpolation=cv2.INTER_AREA)
-
-angry = cv2.imread("emojis/angry.jpg")
-if angry is not None:
-    angry = cv2.resize(angry, (100, 100), interpolation=cv2.INTER_AREA)
-
-surprise = cv2.imread("emojis/surprise.jpg")
-if surprise is not None:
-    surprise = cv2.resize(surprise, (100, 100), interpolation=cv2.INTER_AREA)
-
-nuetral = cv2.imread("emojis/nuetral.jpg")
-if nuetral is not None:
-    nuetral = cv2.resize(nuetral, (100, 100), interpolation=cv2.INTER_AREA)
-
-disgust = cv2.imread("emojis/disgust.jpg")
-if disgust is not None:
-    disgust = cv2.resize(disgust, (100, 100), interpolation=cv2.INTER_AREA)
-
-scared = cv2.imread("emojis/scared.jpg")
-if scared is not None:
-    scared = cv2.resize(scared, (100, 100), interpolation=cv2.INTER_AREA)
 
 recommender = EmotionRecommender()
 
@@ -73,7 +44,6 @@ def main(on_emotion_update=None, on_frame_update=None, show_window=True, should_
 
         canvas = np.zeros((350, 300, 3), dtype="uint8")
         frameClone = frame.copy()
-        emoji_frame = np.zeros((350, 350, 3), dtype="uint8")
 
         if len(faces) > 0:
             faces = sorted(faces, reverse=True, key=lambda x: (x[2] - x[0]) * (x[3] - x[1]))[0]
@@ -103,24 +73,13 @@ def main(on_emotion_update=None, on_frame_update=None, show_window=True, should_
             cv2.putText(frameClone, label.upper(), (fX, fY - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
             cv2.rectangle(frameClone, (fX, fY), (fX + fW, fY + fH), (0, 255, 0), 2)
 
-            emoji_map = {
-                "happy": happy,
-                "sad": sad,
-                "angry": angry,
-                "neutral": nuetral,
-                "surprised": surprise,
-                "disgust": disgust,
-                "scared": scared
-            }
-            if label in emoji_map and emoji_map[label] is not None:
-                emoji_frame = cv2.resize(emoji_map[label], (350, 350), interpolation=cv2.INTER_AREA)
         else:
             frame_count = 0
             stable_emotion = None
             recommendation = None
 
         frame_resized = cv2.resize(frameClone, (500, 350), interpolation=cv2.INTER_AREA)
-        combined_view = cv2.hconcat([emoji_frame, frame_resized, canvas])
+        combined_view = cv2.hconcat([frame_resized, canvas])
         last_frame = frameClone
 
         if on_frame_update is not None:

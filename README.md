@@ -17,7 +17,6 @@ facial-emotion-recognition/
 ├─ recommender.py                      # Nội dung gợi ý
 ├─ models/_mini_XCEPTION.102-0.66.hdf5
 ├─ haarcascade_files/haarcascade_frontalface_default.xml
-├─ emojis/
 ├─ music/
 └─ outputs/                            # Tự tạo khi chạy
 ```
