@@ -1,6 +1,7 @@
-﻿import os
+import os
 from tkinter import *
 from PIL import Image, ImageTk
+import cv2
 
 import live_emotion
 
@@ -69,11 +70,9 @@ class EmotionMusicPlayer:
 def main():
     cwd = os.getcwd()
     root = Tk()
-    root.config(bg="green")
+    root.config(bg="#0f172a")
 
     music_player = EmotionMusicPlayer(cwd)
-    vi_window = None
-    vi_text = None
 
     emotion_vi_map = {
         "angry": "Giận dữ",
@@ -85,62 +84,120 @@ def main():
         "neutral": "Bình thường",
     }
 
-    header = Label(root, text="NHAN DIEN CAM XUC - AI RECOMMENDER", font=("Arial Bold", 14), fg="red", bg="green")
-    header.pack(pady=6)
+    ui_state = {
+        "running": False,
+        "stop_requested": False,
+        "current_music_emotion": None,
+        "latest_music_status": "",
+    }
 
-    bg_path = os.path.join(cwd, "bg2.jpg")
-    if os.path.exists(bg_path):
-        image = Image.open(bg_path)
-        photo = ImageTk.PhotoImage(image)
-        image_label = Label(root, image=photo)
-        root.image = photo
-        image_label.pack()
-    else:
-        image_label = Label(root, text="EMOLAYER", font=("Arial Bold", 24), bg="green", fg="white")
-        image_label.pack()
-        root.image = None
-
-    emotion_label = Label(root, text="Cảm xúc: --", font=("Arial Bold", 14), bg="green", fg="white")
-    emotion_label.pack(pady=8)
-
-    music_status_label = Label(root, text="Nhạc: --", font=("Arial", 10), bg="green", fg="yellow", wraplength=420)
-    music_status_label.pack(pady=4)
-
-    hint_label = Label(
+    header = Label(
         root,
-        text="Nhấn Start để mở webcam.\nCửa sổ phản hồi tiếng Việt sẽ tách riêng và cập nhật ngay khi nhận diện.",
-        font=("Arial", 10),
-        bg="green",
-        fg="cyan",
-        justify="center",
+        text="EMOLAYER - NHẬN DIỆN CẢM XÚC VÀ GỢI Ý THỜI GIAN THỰC",
+        font=("Segoe UI Semibold", 16),
+        fg="#f8fafc",
+        bg="#0f172a",
     )
-    hint_label.pack(pady=8)
+    header.pack(fill=X, padx=16, pady=(14, 8))
 
-    def create_or_focus_response_window():
-        nonlocal vi_window, vi_text
+    body = Frame(root, bg="#0f172a")
+    body.pack(fill=BOTH, expand=True, padx=14, pady=(0, 10))
 
-        if vi_window is None or not vi_window.winfo_exists():
-            vi_window = Toplevel(root)
-            vi_window.title("Phan hoi tieng Viet")
-            vi_window.geometry("560x420")
+    video_panel = LabelFrame(
+        body,
+        text="Live Feed",
+        font=("Segoe UI Semibold", 11),
+        fg="#e2e8f0",
+        bg="#1e293b",
+        bd=1,
+        relief="solid",
+        padx=8,
+        pady=8,
+    )
+    video_panel.pack(side=LEFT, fill=BOTH, expand=True, padx=(0, 10))
 
-            title = Label(vi_window, text="Phản hồi tiếng Việt (Realtime)", font=("Arial Bold", 12))
-            title.pack(pady=8)
+    video_label = Label(
+        video_panel,
+        text="Nhấn Start để bắt đầu nhận diện",
+        font=("Segoe UI", 12),
+        fg="#cbd5e1",
+        bg="#0b1220",
+        width=140,
+        height=26,
+    )
+    video_label.pack(fill=BOTH, expand=True)
 
-            vi_text = Text(vi_window, wrap=WORD, font=("Arial", 10), padx=12, pady=10)
-            vi_text.pack(fill=BOTH, expand=True, padx=10, pady=8)
-        else:
-            vi_window.deiconify()
-            vi_window.lift()
+    right_panel = LabelFrame(
+        body,
+        text="Kết Quả & Phản Hồi",
+        font=("Segoe UI Semibold", 11),
+        fg="#e2e8f0",
+        bg="#1e293b",
+        bd=1,
+        relief="solid",
+        padx=10,
+        pady=10,
+    )
+    right_panel.pack(side=RIGHT, fill=Y)
 
-    def update_response_window(emotion, recommendation, music_status):
-        if vi_window is None or not vi_window.winfo_exists() or vi_text is None:
-            return
+    emotion_label = Label(
+        right_panel,
+        text="Cảm xúc: --",
+        font=("Segoe UI Semibold", 14),
+        fg="#f8fafc",
+        bg="#1e293b",
+        anchor="w",
+        justify=LEFT,
+    )
+    emotion_label.pack(fill=X, pady=(2, 8))
 
+    music_status_label = Label(
+        right_panel,
+        text="Nhạc: --",
+        font=("Segoe UI", 10),
+        fg="#facc15",
+        bg="#1e293b",
+        wraplength=360,
+        anchor="w",
+        justify=LEFT,
+    )
+    music_status_label.pack(fill=X, pady=(0, 10))
+
+    response_title = Label(
+        right_panel,
+        text="Phản hồi tiếng Việt",
+        font=("Segoe UI Semibold", 11),
+        fg="#93c5fd",
+        bg="#1e293b",
+        anchor="w",
+        justify=LEFT,
+    )
+    response_title.pack(fill=X, pady=(0, 6))
+
+    response_text = Text(
+        right_panel,
+        wrap=WORD,
+        font=("Segoe UI", 10),
+        width=46,
+        height=24,
+        bg="#0b1220",
+        fg="#e2e8f0",
+        insertbackground="#e2e8f0",
+        padx=12,
+        pady=10,
+        relief="flat",
+    )
+    response_text.pack(fill=BOTH, expand=True)
+    response_text.config(state=DISABLED)
+
+    action_bar = Frame(root, bg="#0f172a")
+    action_bar.pack(fill=X, padx=14, pady=(0, 12))
+
+    def update_response_panel(emotion, recommendation, music_status):
         if recommendation is None:
             content = (
                 "Đang nhận diện cảm xúc...\n"
-                "Khi cảm xúc ổn định, hệ thống sẽ trả lời tại đây ngay lập tức."
+                "Khi cảm xúc ổn định, hệ thống sẽ hiển thị phản hồi tại đây."
             )
         else:
             emotion_text = emotion_vi_map.get(emotion, emotion)
@@ -156,86 +213,164 @@ def main():
         if music_status:
             content += f"\n\nTrạng thái nhạc: {music_status}"
 
-        vi_text.config(state=NORMAL)
-        vi_text.delete("1.0", END)
-        vi_text.insert(END, content)
-        vi_text.config(state=DISABLED)
+        response_text.config(state=NORMAL)
+        response_text.delete("1.0", END)
+        response_text.insert(END, content)
+        response_text.config(state=DISABLED)
 
-    def callback():
-        current_music_emotion = None
-        latest_music_status = ""
+    def render_frame(combined_view):
+        if not root.winfo_exists():
+            return
 
-        create_or_focus_response_window()
-        update_response_window("neutral", None, "")
+        rgb_frame = cv2.cvtColor(combined_view, cv2.COLOR_BGR2RGB)
+        image = Image.fromarray(rgb_frame)
+        photo = ImageTk.PhotoImage(image=image)
+        video_label.config(image=photo, text="")
+        video_label.image = photo
 
-        def on_emotion_update(emotion, recommendation):
-            nonlocal current_music_emotion, latest_music_status
-
-            if emotion and emotion != current_music_emotion:
-                music_path, music_error = music_player.play_for_emotion(emotion)
-                if music_error:
-                    latest_music_status = music_error
-                elif music_path:
-                    latest_music_status = f"Đang phát: {os.path.basename(music_path)}"
-                current_music_emotion = emotion
-
-            emotion_label.config(text=f"Cảm xúc: {emotion.upper()}")
-            music_status_label.config(text=f"Nhạc: {latest_music_status or '--'}")
-            update_response_window(emotion, recommendation, latest_music_status)
+        try:
+            root.update_idletasks()
             root.update()
+        except TclError:
+            pass
 
-        # Bật nhạc nền ngay khi mở webcam.
-        music_path, music_error = music_player.play_for_emotion("neutral")
-        if music_error:
-            latest_music_status = music_error
-        elif music_path:
-            latest_music_status = f"Đang phát: {os.path.basename(music_path)}"
-            current_music_emotion = "neutral"
-
-        music_status_label.config(text=f"Nhạc: {latest_music_status or '--'}")
-        update_response_window("neutral", None, latest_music_status)
-        root.update()
-
-        res = live_emotion.main(on_emotion_update=on_emotion_update)
-        emotion = res.get("emotion", "neutral")
-        recommendation = res.get("recommendation")
+    def on_emotion_update(emotion, recommendation):
+        if emotion and emotion != ui_state["current_music_emotion"]:
+            music_path, music_error = music_player.play_for_emotion(emotion)
+            if music_error:
+                ui_state["latest_music_status"] = music_error
+            elif music_path:
+                ui_state["latest_music_status"] = f"Đang phát: {os.path.basename(music_path)}"
+            ui_state["current_music_emotion"] = emotion
 
         emotion_label.config(text=f"Cảm xúc: {emotion.upper()}")
-        update_response_window(emotion, recommendation, latest_music_status)
+        music_status_label.config(text=f"Nhạc: {ui_state['latest_music_status'] or '--'}")
+        update_response_panel(emotion, recommendation, ui_state["latest_music_status"])
 
-        output_path = res.get("output_path", os.path.join(cwd, "outputs", "output.jpg"))
-        if not os.path.exists(output_path):
-            fallback_path = os.path.join(cwd, "output.jpg")
-            if os.path.exists(fallback_path):
-                output_path = fallback_path
-        if os.path.exists(output_path):
-            image = Image.open(output_path)
-            photo = ImageTk.PhotoImage(image)
-            image_label.config(image=photo)
-            root.image = photo
+        try:
+            root.update_idletasks()
+            root.update()
+        except TclError:
+            pass
+
+    def should_stop():
+        return ui_state["stop_requested"] or not root.winfo_exists()
+
+    def callback_start():
+        if ui_state["running"]:
+            return
+
+        ui_state["running"] = True
+        ui_state["stop_requested"] = False
+        ui_state["current_music_emotion"] = None
+        ui_state["latest_music_status"] = ""
+
+        music_path, music_error = music_player.play_for_emotion("neutral")
+        if music_error:
+            ui_state["latest_music_status"] = music_error
+        elif music_path:
+            ui_state["latest_music_status"] = f"Đang phát: {os.path.basename(music_path)}"
+            ui_state["current_music_emotion"] = "neutral"
+
+        music_status_label.config(text=f"Nhạc: {ui_state['latest_music_status'] or '--'}")
+        update_response_panel("neutral", None, ui_state["latest_music_status"])
+        root.update()
+
+        res = live_emotion.main(
+            on_emotion_update=on_emotion_update,
+            on_frame_update=render_frame,
+            show_window=False,
+            should_stop=should_stop,
+        )
+
+        ui_state["running"] = False
+        emotion = res.get("emotion", "neutral")
+        recommendation = res.get("recommendation")
+        emotion_label.config(text=f"Cảm xúc: {emotion.upper()}")
+        update_response_panel(emotion, recommendation, ui_state["latest_music_status"])
+
+    def callback_stop_webcam():
+        ui_state["stop_requested"] = True
 
     def callback_refresh():
+        ui_state["stop_requested"] = True
         music_player.stop()
+        ui_state["current_music_emotion"] = None
+        ui_state["latest_music_status"] = ""
         emotion_label.config(text="Cảm xúc: --")
         music_status_label.config(text="Nhạc: --")
+        update_response_panel("neutral", None, "")
+        video_label.config(image="", text="Nhấn Start để bắt đầu nhận diện")
+        video_label.image = None
 
-        if vi_window is not None and vi_window.winfo_exists():
-            vi_window.destroy()
+    def callback_stop_music():
+        music_player.stop()
+        ui_state["latest_music_status"] = "Đã dừng nhạc."
+        music_status_label.config(text=f"Nhạc: {ui_state['latest_music_status']}")
+        update_response_panel("neutral", None, ui_state["latest_music_status"])
 
     def on_close():
+        ui_state["stop_requested"] = True
         music_player.stop()
-        if vi_window is not None and vi_window.winfo_exists():
-            vi_window.destroy()
         root.destroy()
 
     root.title("EMOLAYER - AI Emotion Recommender")
-    root.geometry("480x640")
+    root.geometry("1366x760")
+    root.minsize(1180, 680)
     root.resizable(width=True, height=True)
     root.protocol("WM_DELETE_WINDOW", on_close)
 
-    Button(text="Start - Nhan dien cam xuc", command=callback, font=("Arial", 10), bg="yellow").pack(side=TOP, padx=10, pady=6)
-    Button(text="Refresh", command=callback_refresh, font=("Arial", 10)).pack(side=TOP, padx=10, pady=6)
-    Button(text="Stop nhac", command=music_player.stop, font=("Arial", 10)).pack(side=TOP, padx=10, pady=6)
+    Button(
+        action_bar,
+        text="Start - Nhận diện cảm xúc",
+        command=callback_start,
+        font=("Segoe UI Semibold", 10),
+        bg="#22c55e",
+        fg="#0f172a",
+        activebackground="#16a34a",
+        relief="flat",
+        padx=14,
+        pady=8,
+    ).pack(side=LEFT, padx=(0, 8))
+
+    Button(
+        action_bar,
+        text="Stop Webcam",
+        command=callback_stop_webcam,
+        font=("Segoe UI", 10),
+        bg="#f59e0b",
+        fg="#111827",
+        activebackground="#d97706",
+        relief="flat",
+        padx=12,
+        pady=8,
+    ).pack(side=LEFT, padx=(0, 8))
+
+    Button(
+        action_bar,
+        text="Refresh",
+        command=callback_refresh,
+        font=("Segoe UI", 10),
+        bg="#e2e8f0",
+        fg="#111827",
+        activebackground="#cbd5e1",
+        relief="flat",
+        padx=12,
+        pady=8,
+    ).pack(side=LEFT, padx=(0, 8))
+
+    Button(
+        action_bar,
+        text="Stop nhạc",
+        command=callback_stop_music,
+        font=("Segoe UI", 10),
+        bg="#f87171",
+        fg="#111827",
+        activebackground="#ef4444",
+        relief="flat",
+        padx=12,
+        pady=8,
+    ).pack(side=LEFT)
 
     root.mainloop()
 

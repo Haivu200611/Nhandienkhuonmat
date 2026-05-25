@@ -37,7 +37,8 @@ if scared is not None:
 
 recommender = EmotionRecommender()
 
-def main(on_emotion_update=None):
+
+def main(on_emotion_update=None, on_frame_update=None, show_window=True, should_stop=None):
     detection_model_path = 'haarcascade_files/haarcascade_frontalface_default.xml'
     emotion_model_path = 'models/_mini_XCEPTION.102-0.66.hdf5'
     output_dir = os.path.join(os.getcwd(), "outputs")
@@ -48,25 +49,31 @@ def main(on_emotion_update=None):
     emotion_classifier = load_model(emotion_model_path, compile=False)
     EMOTIONS = ["angry", "disgust", "scared", "happy", "sad", "surprised", "neutral"]
 
-    cv2.namedWindow('your_face')
+    if show_window:
+        cv2.namedWindow("Emotion Recognition")
     camera = cv2.VideoCapture(0)
 
     frame_count = 0
     stable_emotion = None
     recommendation = None
+    last_frame = None
 
     while True:
-        frame = camera.read()[1]
-        if frame is None:
+        if should_stop is not None and should_stop():
             break
 
-        frame = imutils.resize(frame, width=300)
+        ok, frame = camera.read()
+        if not ok or frame is None:
+            break
+
+        frame = imutils.resize(frame, width=500)
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = face_detection.detectMultiScale(
             gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30), flags=cv2.CASCADE_SCALE_IMAGE)
 
         canvas = np.zeros((350, 300, 3), dtype="uint8")
         frameClone = frame.copy()
+        emoji_frame = np.zeros((350, 350, 3), dtype="uint8")
 
         if len(faces) > 0:
             faces = sorted(faces, reverse=True, key=lambda x: (x[2] - x[0]) * (x[3] - x[1]))[0]
@@ -106,18 +113,26 @@ def main(on_emotion_update=None):
                 "scared": scared
             }
             if label in emoji_map and emoji_map[label] is not None:
-                cv2.imshow('emoji', emoji_map[label])
+                emoji_frame = cv2.resize(emoji_map[label], (350, 350), interpolation=cv2.INTER_AREA)
         else:
             frame_count = 0
             stable_emotion = None
             recommendation = None
 
-        cv2.imshow('your_face', frameClone)
-        cv2.imshow("Emotion Probabilities", canvas)
+        frame_resized = cv2.resize(frameClone, (500, 350), interpolation=cv2.INTER_AREA)
+        combined_view = cv2.hconcat([emoji_frame, frame_resized, canvas])
+        last_frame = frameClone
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            cv2.imwrite(output_path, frameClone)
-            break
+        if on_frame_update is not None:
+            on_frame_update(combined_view)
+
+        if show_window:
+            cv2.imshow("Emotion Recognition", combined_view)
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+
+    if last_frame is not None:
+        cv2.imwrite(output_path, last_frame)
 
     result = {
         "emotion": stable_emotion if stable_emotion else "neutral",

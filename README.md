@@ -1,4 +1,4 @@
-﻿# Facial Emotion Recognition - AI Recommender
+# Facial Emotion Recognition - AI Recommender
 
 Ứng dụng nhận diện cảm xúc khuôn mặt realtime bằng webcam, sau đó gợi ý nhạc, hoạt động, câu nói và phim phù hợp.
 
