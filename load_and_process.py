@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 import cv2
 import numpy as np
@@ -7,6 +9,11 @@ image_size = (48, 48)
 
 
 def load_fer2013():
+    if not os.path.exists(dataset_path):
+        raise FileNotFoundError(
+            f"FER2013 CSV not found at '{dataset_path}'. "
+            "Update dataset_path or place the CSV in the expected location."
+        )
     data = pd.read_csv(dataset_path)
     pixels = data['pixels'].tolist()
     width, height = 48, 48
@@ -18,7 +25,8 @@ def load_fer2013():
         faces.append(face.astype('float32'))
     faces = np.asarray(faces)
     faces = np.expand_dims(faces, -1)
-    emotions = pd.get_dummies(data['emotion']).as_matrix()
+    # to_numpy() replaces deprecated as_matrix().
+    emotions = pd.get_dummies(data['emotion']).to_numpy()
     return faces, emotions
 
 

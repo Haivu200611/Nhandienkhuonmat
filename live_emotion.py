@@ -18,7 +18,7 @@ def main(on_emotion_update=None, on_frame_update=None, show_window=True, should_
 
     face_detection = cv2.CascadeClassifier(detection_model_path)
     emotion_classifier = load_model(emotion_model_path, compile=False)
-    EMOTIONS = ["angry", "disgust", "scared", "happy", "sad", "surprised", "neutral"]
+    EMOTIONS = ["angry", "disgust", "fear", "happy", "sad", "surprise", "neutral"]
 
     if show_window:
         cv2.namedWindow("Emotion Recognition")

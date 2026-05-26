@@ -5,9 +5,11 @@ class EmotionRecommender:
     EMOTION_MAP = {
         "angry": "Anger",
         "disgust": "Disgust",
+        "fear": "Fear",
         "scared": "Fear",
         "happy": "Happy",
         "sad": "Sad",
+        "surprise": "Surprise",
         "surprised": "Surprise",
         "neutral": "Neutral",
     }

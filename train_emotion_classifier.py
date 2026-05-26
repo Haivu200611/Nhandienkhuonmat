@@ -1,22 +1,30 @@
 # Description: Train emotion classification model
 
-from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping
-from keras.callbacks import ReduceLROnPlateau
-from keras.preprocessing.image import ImageDataGenerator
-from load_and_process import load_fer2013
-from load_and_process import preprocess_input
+import os
+
+try:
+    from tensorflow.keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping
+    from tensorflow.keras.callbacks import ReduceLROnPlateau
+    from tensorflow.keras.preprocessing.image import ImageDataGenerator
+except ImportError:
+    from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping
+    from keras.callbacks import ReduceLROnPlateau
+    from keras.preprocessing.image import ImageDataGenerator
 from models.cnn import mini_XCEPTION
-from sklearn.model_selection import train_test_split
 
 # parameters
 batch_size = 32
 num_epochs = 10000
-input_shape = (48, 48, 1)
-validation_split = .2
+input_shape = (64, 64, 1)
 verbose = 1
 num_classes = 7
 patience = 50
 base_path = 'models/'
+train_dir = 'data/train'
+validation_dir = 'data/validation'
+
+# Keep class order aligned with model output expectations.
+emotion_classes = ['angry', 'disgust', 'fear', 'happy', 'sad', 'surprise', 'neutral']
 
 # data generator
 data_generator = ImageDataGenerator(
@@ -28,6 +36,10 @@ data_generator = ImageDataGenerator(
     zoom_range=.1,
     horizontal_flip=True)
 
+validation_data_generator = ImageDataGenerator(
+    featurewise_center=False,
+    featurewise_std_normalization=False)
+
 # model parameters/compilation
 model = mini_XCEPTION(input_shape, num_classes)
 model.compile(optimizer='adam', loss='categorical_crossentropy',metrics=['accuracy'])
@@ -36,18 +48,53 @@ model.summary()
 # callbacks
 log_file_path = base_path + '_emotion_training.log'
 csv_logger = CSVLogger(log_file_path, append=False)
-early_stop = EarlyStopping('val_loss', patience=patience)
-reduce_lr = ReduceLROnPlateau('val_loss', factor=0.1, patience=int(patience/4), verbose=1)
+early_stop = EarlyStopping(monitor='val_loss', patience=patience)
+reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=int(patience/4), verbose=1)
 trained_models_path = base_path + '_mini_XCEPTION'
-model_names = trained_models_path + '.{epoch:02d}-{val_acc:.2f}.hdf5'
-model_checkpoint = ModelCheckpoint(model_names, 'val_loss', verbose=1, save_best_only=True)
+model_names = trained_models_path + '.{epoch:02d}-{val_accuracy:.2f}.hdf5'
+model_checkpoint = ModelCheckpoint(model_names, monitor='val_loss', verbose=1, save_best_only=True)
 callbacks = [model_checkpoint, csv_logger, early_stop, reduce_lr]
 
-# loading dataset
-faces, emotions = load_fer2013()
-faces = preprocess_input(faces)
-num_samples, num_classes = emotions.shape
-xtrain, xtest, ytrain, ytest = train_test_split(
-    faces, emotions, test_size=0.2, shuffle=True)
-model.fit_generator(data_generator.flow(xtrain, ytrain, batch_size), steps_per_epoch=len(
-    xtrain) / batch_size, epochs=num_epochs, verbose=1, callbacks=callbacks, validation_data=(xtest, ytest))
+train_generator = data_generator.flow_from_directory(
+    train_dir,
+    target_size=(64, 64),
+    color_mode='grayscale',
+    classes=emotion_classes,
+    class_mode='categorical',
+    batch_size=batch_size,
+    shuffle=True)
+
+validation_generator = validation_data_generator.flow_from_directory(
+    validation_dir,
+    target_size=(64, 64),
+    color_mode='grayscale',
+    classes=emotion_classes,
+    class_mode='categorical',
+    batch_size=batch_size,
+    shuffle=False)
+
+expected_classes = set(emotion_classes)
+for split_name, split_dir in [("train", train_dir), ("validation", validation_dir)]:
+    found_classes = {d.name for d in os.scandir(split_dir) if d.is_dir()}
+    if found_classes != expected_classes:
+        raise ValueError(
+            f"Class folders mismatch in {split_name}. "
+            f"Expected: {sorted(expected_classes)}, found: {sorted(found_classes)}"
+        )
+
+if train_generator.class_indices != validation_generator.class_indices:
+    raise ValueError(
+        f"Class index mismatch train vs validation: "
+        f"{train_generator.class_indices} != {validation_generator.class_indices}"
+    )
+
+print("Class indices:", train_generator.class_indices)
+
+model.fit(
+    train_generator,
+    steps_per_epoch=len(train_generator),
+    epochs=num_epochs,
+    verbose=verbose,
+    callbacks=callbacks,
+    validation_data=validation_generator,
+    validation_steps=len(validation_generator))

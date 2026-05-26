@@ -26,9 +26,11 @@ class EmotionMusicPlayer:
         file_map = {
             "angry": "angry",
             "disgust": "disgust",
+            "fear": "scared",
             "scared": "scared",
             "happy": "happy",
             "sad": "sad",
+            "surprise": "surprise",
             "surprised": "surprise",
             "neutral": "neutral",
         }
@@ -83,6 +85,8 @@ def main():
         "surprised": "Ngạc nhiên",
         "neutral": "Bình thường",
     }
+    emotion_vi_map["fear"] = emotion_vi_map["scared"]
+    emotion_vi_map["surprise"] = emotion_vi_map["surprised"]
 
     ui_state = {
         "running": False,
@@ -376,3 +380,4 @@ def main():
 
 
 main()
+
