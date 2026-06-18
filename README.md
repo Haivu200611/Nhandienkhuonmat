@@ -1,113 +1,147 @@
-# Facial Emotion Recognition - AI Recommender
+# Facial Emotion Recognition
 
-Ứng dụng nhận diện cảm xúc khuôn mặt realtime bằng webcam, sau đó gợi ý nhạc, hoạt động, câu nói và phim phù hợp.
+## 1. Giới thiệu dự án
 
-## Tính năng chính
-- Nhận diện 7 cảm xúc: `angry`, `disgust`, `scared`, `happy`, `sad`, `surprised`, `neutral`.
-- Hiển thị cửa sổ webcam + cửa sổ xác suất cảm xúc (`Emotion Probabilities`).
-- Mở **cửa sổ phản hồi tiếng Việt riêng** và cập nhật realtime khi cảm xúc ổn định.
-- Phát nhạc theo cảm xúc ngay trong lúc webcam đang chạy.
-- Ảnh kết quả khi bấm `q` được lưu vào thư mục `outputs/output.jpg`.
+Facial Emotion Recognition là ứng dụng nhận diện cảm xúc khuôn mặt theo thời gian thực bằng webcam. Dự án sử dụng OpenCV để phát hiện khuôn mặt, mô hình deep learning để dự đoán cảm xúc, và giao diện Tkinter để người dùng thao tác trực quan.
 
-## Cấu trúc thư mục quan trọng
+Ứng dụng có thể nhận diện 7 nhóm cảm xúc:
+
+- `angry`
+- `disgust`
+- `scared`
+- `happy`
+- `sad`
+- `surprised`
+- `neutral`
+
+Sau khi nhận diện, chương trình có thể hiển thị xác suất từng cảm xúc, đưa ra gợi ý phù hợp và phát nhạc từ thư mục `music/` theo cảm xúc được phát hiện.
+
+Một số thành phần chính của dự án:
+
 ```text
 facial-emotion-recognition/
-├─ emotion.py                          # GUI chính (Tkinter)
-├─ live_emotion.py                     # Nhận diện realtime (OpenCV + model)
-├─ recommender.py                      # Nội dung gợi ý
-├─ models/_mini_XCEPTION.102-0.66.hdf5
-├─ haarcascade_files/haarcascade_frontalface_default.xml
-├─ music/
-└─ outputs/                            # Tự tạo khi chạy
+├── emotion.py                         # File chạy giao diện chính
+├── live_emotion.py                    # Xử lý nhận diện cảm xúc realtime
+├── recommender.py                     # Nội dung gợi ý theo cảm xúc
+├── load_and_process.py                # Tải và tiền xử lý dữ liệu
+├── train_emotion_classifier.py        # Huấn luyện mô hình
+├── models/                            # Chứa mô hình đã huấn luyện
+├── haarcascade_files/                 # File Haar Cascade phát hiện khuôn mặt
+├── music/                             # Nhạc theo từng cảm xúc
+├── data/                              # Dữ liệu train/validation
+└── outputs/                           # Nơi lưu ảnh kết quả
 ```
 
-## Yêu cầu hệ thống
-- Windows 10/11 (khuyến nghị, vì có `os.startfile` fallback phát nhạc).
-- Python `3.12.x`.
-- Webcam hoạt động bình thường.
+## 2. Thiết lập dự án
 
-## Hướng dẫn chạy từ đầu đến cuối
+Yêu cầu cơ bản:
 
-### 1. Clone project
+- Python 3.10 trở lên
+- Webcam hoạt động bình thường
+- Hệ điều hành Windows được khuyến nghị
+- VLC Player nếu muốn phát nhạc trực tiếp bằng `python-vlc`
+
+Clone hoặc tải dự án về máy:
+
 ```powershell
-git clone <URL_REPO_CUA_BAN>
+git clone <URL_REPO>
 cd facial-emotion-recognition
 ```
 
-### 2. Tạo virtual environment
+Tạo môi trường ảo:
+
 ```powershell
 python -m venv .venv
+```
+
+Kích hoạt môi trường ảo trên PowerShell:
+
+```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-Nếu PowerShell chặn script, chạy tạm lệnh này rồi activate lại:
+Nếu PowerShell chặn việc chạy script, có thể chạy lệnh sau trong phiên làm việc hiện tại:
+
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 ```
 
-### 3. Cài thư viện để chạy app
-Khuyến nghị dùng file tối thiểu (đã test với code hiện tại):
+Cài đặt các thư viện cần thiết:
+
 ```powershell
 python -m pip install --upgrade pip
 python -m pip install -r requirements-min.txt
 ```
 
-Lưu ý:
-- `python-vlc` cần VLC Player đã cài trong máy để phát nhạc trực tiếp trong app.
-- Nếu chưa có VLC, app sẽ fallback mở file mp3 bằng trình mặc định của Windows.
+Nếu cần cài đầy đủ các phụ thuộc cũ của dự án, có thể dùng:
 
-### 4. Chạy ứng dụng
+```powershell
+python -m pip install -r requirements.txt
+```
+
+## 3. Biên dịch và chạy dự án
+
+Dự án là ứng dụng Python nên không cần biên dịch như các ngôn ngữ C/C++/Java. Sau khi cài đặt thư viện, có thể chạy trực tiếp các file Python.
+
+Kiểm tra nhanh các file quan trọng trước khi chạy:
+
+- `models/_mini_XCEPTION.102-0.66.hdf5`: mô hình nhận diện cảm xúc
+- `haarcascade_files/haarcascade_frontalface_default.xml`: file phát hiện khuôn mặt
+- `music/*.mp3`: nhạc ứng với từng cảm xúc
+- `outputs/`: thư mục lưu ảnh kết quả
+
+Nếu muốn huấn luyện lại mô hình, chạy:
+
+```powershell
+python .\train_emotion_classifier.py
+```
+
+Nếu chỉ muốn chạy ứng dụng nhận diện đã có model sẵn, không cần huấn luyện lại.
+
+## 4. Chạy dự án
+
+Chạy ứng dụng giao diện chính:
+
 ```powershell
 python .\emotion.py
 ```
 
-### 5. Cách sử dụng
-1. Bấm `Start - Nhan dien cam xuc`.
-2. Webcam mở ra, đồng thời mở cửa sổ `Emotion Probabilities`.
-3. Cửa sổ `Phản hồi tiếng Việt (Realtime)` sẽ cập nhật trả lời riêng ngay khi cảm xúc ổn định.
-4. Bấm `q` trong cửa sổ webcam để thoát nhận diện.
-5. Ảnh snapshot lưu tại: `outputs/output.jpg`.
+Sau khi chạy, cửa sổ giao diện sẽ hiển thị nút bắt đầu nhận diện cảm xúc. Khi nhận diện, ứng dụng sẽ mở webcam, hiển thị khuôn mặt được phát hiện và cập nhật kết quả cảm xúc theo thời gian thực.
 
-## Xử lý lỗi thường gặp
+Có thể chạy file xử lý realtime riêng nếu muốn kiểm tra nhanh phần nhận diện:
 
-### `ModuleNotFoundError: No module named 'PIL'`
 ```powershell
-python -m pip install Pillow
+python .\live_emotion.py
 ```
 
-### `ModuleNotFoundError: No module named 'keras'`
+## 5. Cách sử dụng
+
+1. Mở terminal tại thư mục `facial-emotion-recognition`.
+2. Kích hoạt môi trường ảo nếu đã tạo:
+
 ```powershell
-python -m pip install tensorflow keras
+.\.venv\Scripts\Activate.ps1
 ```
 
-### Không phát được nhạc
-- Kiểm tra thư mục `music/` có đủ file `.mp3`.
-- Cài VLC Player + `python-vlc`.
-- Nếu vẫn lỗi, app sẽ cố mở nhạc bằng ứng dụng mặc định của Windows.
+3. Chạy ứng dụng:
 
-### Không mở được webcam
-- Đóng ứng dụng khác đang chiếm camera (Zoom, Meet, Teams, OBS...).
-- Kiểm tra quyền camera trong Windows Settings.
-
-## Đẩy project sang repo Git mới
-
-### Cách nhanh (đổi remote hiện tại sang repo mới)
 ```powershell
-git remote rename origin old-origin
-git remote add origin <URL_REPO_MOI>
-git add .
-git commit -m "Initial import: facial emotion recognition app"
-git branch -M main
-git push -u origin main
+python .\emotion.py
 ```
 
-### Nếu muốn giữ repo cũ và thêm remote mới
-```powershell
-git remote add new-origin <URL_REPO_MOI>
-git add .
-git commit -m "Initial import: facial emotion recognition app"
-git push -u new-origin main
+4. Trong giao diện, bấm nút `Start - Nhan dien cam xuc`.
+5. Đặt khuôn mặt trước webcam để chương trình nhận diện.
+6. Xem kết quả cảm xúc và xác suất hiển thị trên cửa sổ chương trình.
+7. Nếu cảm xúc được nhận diện ổn định, ứng dụng sẽ cập nhật phần gợi ý và có thể phát nhạc từ thư mục `music/`.
+8. Bấm phím `q` trong cửa sổ webcam để dừng nhận diện.
+9. Ảnh kết quả sau khi dừng sẽ được lưu tại:
+
+```text
+outputs/output.jpg
 ```
 
-## Ghi chú
-- `requirements.txt` hiện là danh sách phụ thuộc cũ và rất lớn; để chạy nhanh, ưu tiên `requirements-min.txt`.
+Một số lỗi thường gặp:
+
+- Nếu không mở được webcam, hãy đóng các ứng dụng đang dùng camera như Zoom, Meet, Teams hoặc OBS.
+- Nếu thiếu thư viện, cài lại bằng `python -m pip install -r requirements-min.txt`.
+- Nếu không phát được nhạc, kiểm tra VLC Player, gói `python-vlc` và các file `.mp3` trong thư mục `music/`.
